@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>God Mode Ödeme</title>
+    <!-- Ethers.js kütüphanesini doğrudan CDN üzerinden çekiyoruz, sunucu gerektirmez -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+</head>
+<body style="background: #111; color: #fff; font-family: sans-serif; text-align: center; padding-top: 100px;">
+
+    <h1>Gizli & Kişisel Ürün</h1>
+    <p>Fiyat: 10 USDT (Polygon Ağı)</p>
+    
+    <button id="payBtn" style="padding: 15px 30px; font-size: 18px; background: #00ffcc; color: #000; border: none; border-radius: 8px; cursor: pointer;">
+        Cüzdanla Öde (Rabby / MetaMask)
+    </button>
+
+    <p id="status" style="margin-top: 20px; color: yellow;"></p>
+
+    <script>
+        // BURAYA KENDİ RABBY / METAMASK CÜZDAN ADRESİNİ YAZ
+        const SENIN_CUZDAN_ADRESIN = "0xB61C02De1592D25680Bf4E6Ad410c358Fb365655";
+        
+        // USDT Kontrat Adresi (Polygon Ağı üzerinde örnek)
+        const USDT_CONTRACT_ADDRESS = "0xc2132d05d31c914a87c6611c10748aeb04b58e8f"; 
+        
+        // USDT Transfer için minimal ABI
+        const minABI = [
+            {"constant": false,"inputs": [{"name": "_to","type": "address"},{"name": "_value","type": "uint256"}],"name": "transfer","outputs": [{"name": "","type": "bool"}],"type": "function"}
+        ];
+
+        document.getElementById('payBtn').onclick = async () => {
+            const statusEl = document.getElementById('status');
+            
+            if (typeof window.ethereum === 'undefined') {
+                alert("Cüzdan (Rabby veya MetaMask) bulunamadı!");
+                return;
+            }
+
+            try {
+                statusEl.innerText = "Cüzdan bağlantısı isteniyor...";
+                await window.ethereum.request({ method: 'eth_requestAccounts' });
+                
+                const provider = new ethers.providers.Web3Provider(window.ethereum);
+                const signer = provider.getSigner();
+                
+                // Polygon ağında olduğundan emin ol (Polygon ID: 137)
+                const network = await provider.getNetwork();
+                if (network.chainId !== 137) {
+                    alert("Lütfen cüzdanınızda Polygon (MATIC) ağını seçin!");
+                    return;
+                }
+
+                statusEl.innerText = "Ödeme cüzdanda onay bekliyor...";
+                const contract = new ethers.Contract(USDT_CONTRACT_ADDRESS, minABI, signer);
+                
+                // 10 USDT göndermek için (USDT 6 basamaklıdır, o yüzden 10_000_000)
+                const amount = ethers.BigNumber.from("10000000"); 
+                
+                const tx = await contract.transfer(SENIN_CUZDAN_ADRESIN, amount);
+                statusEl.innerText = "İşlem blokzincire gönderildi, onay bekleniyor...";
+                
+                await tx.wait(); // İşlemin ağda onaylanmasını bekler
+                
+                statusEl.innerText = "Ödeme başarılı! Yönlendiriliyorsunuz...";
+                setTimeout(() => {
+                    window.location.href = "success.html"; // Başarılı sayfasına atar
+                }, 2000);
+
+            } catch (err) {
+                console.error(err);
+                statusEl.innerText = "İşlem iptal edildi veya hata oluştu.";
+            }
+        };
+    </script>
+</body>
+</html>
